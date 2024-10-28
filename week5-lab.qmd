@@ -1,0 +1,122 @@
+---
+title: "week5-lab"
+author: "Eva Newby"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r}
+library(sf) # vector handling
+library(terra) # raster handling
+library(tidyverse)
+library(tmap) # map making
+library(spData) # spatial data
+library(spDataLarge) # spatial data
+library(viridisLite)
+```
+
+```{r}
+# load raster dataset
+elevation <- rast(system.file("raster/srtm.tif", package = "spDataLarge"))
+
+# load vector dataset
+boundary <- read_sf(system.file("vector/zion.gpkg", package = "spDataLarge"))
+```
+
+```{r}
+# Check CRS
+if(crs(elevation) == crs(boundary)) {
+  print("Coordinate reference systems match")
+} else{
+  warning("Updating coordinate reference systems to match")
+  # transform data to match
+  boundary <- st_transform(boundary, st_crs(elevation))
+}
+```
+
+```{r}
+tm_shape(elevation_crop) +
+  tm_raster(title = 'Elevation (m)')+
+tm_shape(boundary) +
+  tm_borders(lwd = 2)+ # lwd is line width
+  tm_layout(legend.outside = TRUE)
+```
+
+## Clip Raster
+```{r}
+# crop raster to the extent of the vector object
+elevation_crop <- terra::crop(elevation, boundary)
+
+# mask raster based on vector object
+# convert cells outside of the park to NA
+elevation_mask <- terra::mask(elevation, boundary)
+```
+
+```{r}
+# Viz mask data:
+tm_shape(elevation_mask) +
+  tm_raster(title = 'Elevation (m)')+
+tm_shape(boundary) +
+  tm_borders(lwd = 2)+ # lwd is line width
+  tm_layout(legend.outside = TRUE)
+```
+
+```{r}
+# crop and mask raster
+elevation_final <- mask(elevation_crop, boundary)
+```
+
+```{r}
+# Viz mask and crop data:
+tm_shape(elevation_final) +
+  tm_raster(title = 'Elevation (m)')+
+tm_shape(boundary) +
+  tm_borders(lwd = 2)+ # lwd is line width
+  tm_layout(legend.outside = TRUE)
+```
+
+```{r}
+# Can do an inverse mask
+# mask raster based on a vector object, convert cells outside of the park to NA
+
+elevation_inverse_mask <- terra::mask(elevation_crop, boundary, inverse = TRUE)
+```
+
+```{r}
+tm_shape(elevation_inverse_mask) +
+  tm_raster(title = 'Elevation (m)')+
+tm_shape(boundary) +
+  tm_borders(lwd = 2)+ # lwd is line width
+  tm_layout(legend.outside = TRUE)
+```
+
+# Turn raster data into vector data - will need for HW 3
+```{r}
+elevation_mask <- elevation_final
+elevation_mask[elevation_mask < 2000] <- NA
+
+
+elevation_mask_poly <- as.polygons(elevation_mask) %>% 
+  st_as_sf()
+```
+
+```{r}
+map1 <- tm_shape(elevation_mask) +
+  tm_raster() +
+  tm_layout(legend.outside = TRUE,
+            main.title = "masked raster")
+
+map2 <- tm_shape(elevation_mask_poly) +
+  tm_polygons() +
+  tm_layout(main.title = "vectorized raster")
+
+tmap_arrange(map1, map2, nrow = 1)
+```
+
+```{r}
+
+```
+
+
